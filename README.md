@@ -19,3 +19,11 @@ In order to write output to a different file, simply set `KUBECONFIG` variable -
 
 $ KUBECONFIG=/tmp/kubectl-merged kubectl-import ~/.kube/config ~/Downloads/cluster-kubectl-config
 ```
+
+## Installing
+
+Simply download the script to a directory in your path. For example:
+
+```console
+sudo curl -o /usr/local/bin/kubectl-import https://raw.githubusercontent.com/bitnami-labs/kubectl-import/master/kubectl-import && sudo chmod 0755 /usr/local/bin/kubectl-import
+```
