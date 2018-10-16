@@ -1,0 +1,94 @@
+#!/bin/bash
+#
+# Copyright 2018 Bitnami
+
+set -eu -o pipefail
+
+readonly kubeconfig=${KUBECONFIG:-~/.kube/config}
+
+# show usage before creating temporary directories
+showUsage() {
+  echo "Usage: $0 /path/to/config-file ?...?"
+  echo ""
+  echo "The tool takes one or more kubectl config files and combines them back to:"
+  echo "${kubeconfig}"
+  echo ""
+  echo "To write output to another file, set KUBECONFIG variable to"
+  echo "destination file and include all files to read as arguments - such as:"
+  echo ""3
+  echo "  $ KUBECONFIG=\"/tmp/kube-config\" $0 \"${kubeconfig}\" \"/path/to/config-file\""
+  exit 1
+}
+
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  showUsage
+fi
+
+# set up temporary directory ; also make sure it is always removed to
+# potentially leaking kubectl settings
+readonly tmpdir=${TEMP:-/tmp}/kubectl-merge-$$
+cleanup() {
+  rm -fR ${tmpdir}
+}
+trap cleanup EXIT
+
+# create temporary directory
+mkdir ${tmpdir}
+
+# copy a configuration file, possibly base64-decoding it if needed
+copyKubectlFile() {
+  local src="$1"
+  shift
+  local dest="$1"
+
+  local head ; head=$(head --bytes=10 "${src}")
+
+  if [ "${head}" = "apiVersion" ] ; then
+    # kubectl file
+    cp "${src}" "${dest}"
+    echo "Using \"${src}\" as configuration file"
+  elif [ "${head}" = "YXBpVmVyc2" ] ; then
+    echo "Using \"${src}\" as base64-encoded configuration file"
+    # base64-encoded kubectl file
+    # (YXBpVmVyc2 ar first 10 bytes of apiVersion text in base64)
+    base64 -d <"${src}" >"${dest}"
+  else
+    # do not accept unknown content
+    echo "File \"${src}\" does not seem to be a valid kubectl configuration file"
+    exit 1
+  fi
+}
+
+# main logic to combine configuration files
+main() {
+  local i=0
+  local kubconfigs=""
+  local file=""
+
+  # copy all files to single place and build up list of all files
+
+  # copy kubeconfig file if present
+  if [ -f "${kubeconfig}" ] ; then
+    copyKubectlFile "${kubeconfig}" "${tmpdir}/config${i}"
+    kubeconfigs="${tmpdir}/config${i}"
+    i=$((${i} + 1))
+  fi
+
+  for file in "$@" ; do
+    copyKubectlFile "${file}" "${tmpdir}/config${i}"
+    if [ "${i}" -gt 0 ] ; then
+      kubeconfigs="${kubeconfigs}:"
+    fi
+    kubeconfigs="${kubeconfigs}${tmpdir}/config${i}"
+    i=$((${i} + 1))
+  done
+
+  echo "Merging configuration and storing as \"${kubeconfig}\""
+  KUBECONFIG="${kubeconfigs}" kubectl config view --raw >"${tmpdir}/final"
+
+  cat <"${tmpdir}/final" >${kubeconfig}
+
+  exit 0
+}
+
+main "$@"
