@@ -15,7 +15,7 @@ showUsage() {
   echo ""
   echo "To write output to another file, set KUBECONFIG variable to"
   echo "destination file and include all files to read as arguments - such as:"
-  echo ""3
+  echo ""
   echo "  $ KUBECONFIG=\"/tmp/kube-config\" $0 \"${kubeconfig}\" \"/path/to/config-file\""
   exit 1
 }
