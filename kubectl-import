@@ -62,7 +62,7 @@ copyKubectlFile() {
 # main logic to combine configuration files
 main() {
   local i=0
-  local kubconfigs=""
+  local kubeconfigs=""
   local file=""
 
   # copy all files to single place and build up list of all files
