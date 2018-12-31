@@ -41,7 +41,7 @@ copyKubectlFile() {
   shift
   local dest="$1"
 
-  local head ; head=$(head --bytes=10 "${src}")
+  local head ; head=$(head -c10 "${src}")
 
   if [ "${head}" = "apiVersion" ] ; then
     # kubectl file
@@ -51,7 +51,7 @@ copyKubectlFile() {
     echo "Using \"${src}\" as base64-encoded configuration file"
     # base64-encoded kubectl file
     # (YXBpVmVyc2 ar first 10 bytes of apiVersion text in base64)
-    base64 -d <"${src}" >"${dest}"
+    base64 --decode <"${src}" >"${dest}"
   else
     # do not accept unknown content
     echo "File \"${src}\" does not seem to be a valid kubectl configuration file"
@@ -86,6 +86,7 @@ main() {
   echo "Merging configuration and storing as \"${kubeconfig}\""
   KUBECONFIG="${kubeconfigs}" kubectl config view --raw >"${tmpdir}/final"
 
+  mkdir -p "$(dirname "${kubeconfig}")"
   cat <"${tmpdir}/final" >${kubeconfig}
 
   exit 0
